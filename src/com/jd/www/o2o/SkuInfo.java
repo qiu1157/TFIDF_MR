@@ -65,9 +65,11 @@ public class SkuInfo {
 			String[] columns = value.toString().split("\t");
 			String skuId = columns[0];
 			String skuName = columns[1].replaceAll("[,\\n\\t\\r]", "");
+			String shelves_status_cd = columns[24];
 			String classId = columns[30];
 			String className = columns[31];
-			if (skuName.indexOf("测试") == -1 && classId.matches("[0-9]+")) {
+			
+			if (skuName.indexOf("测试") == -1 && classId.matches("[0-9]+") && !("4".equals(shelves_status_cd))) {
 				context.write(new Text(skuId), new Text("a"+"\t"+skuName+"\t"+classId+"\t"+className));
 			}
 		}

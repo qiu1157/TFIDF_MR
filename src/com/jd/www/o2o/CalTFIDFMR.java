@@ -12,6 +12,7 @@ package com.jd.www.o2o;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -113,9 +114,14 @@ public class CalTFIDFMR {
 		job.setOutputValueClass(Text.class);
 
 		// TODO: specify input and output DIRECTORIES (not files)
-		FileInputFormat.setInputPaths(job, new Path("hdfs://master.hadoop:9000/TFout"));
-		FileInputFormat.addInputPath(job, new Path("hdfs://master.hadoop:9000/IDFout"));
-		FileOutputFormat.setOutputPath(job, new Path("hdfs://master.hadoop:9000/TFIDFout"));
+		Path out = new Path("/user/mart_o2o/tmp.db/TFIDFout");
+		FileSystem fileSystem = FileSystem.get(conf);
+		if (fileSystem.exists(out)) {
+			fileSystem.delete(out, true);
+		}
+		FileInputFormat.setInputPaths(job, new Path("/user/mart_o2o/tmp.db/TFout"));
+		FileInputFormat.addInputPath(job, new Path("/user/mart_o2o/tmp.db/IDFout"));
+		FileOutputFormat.setOutputPath(job, out);
 
 		if (!job.waitForCompletion(true))
 			return;		

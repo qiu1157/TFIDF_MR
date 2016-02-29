@@ -12,11 +12,14 @@ package com.jd.www.o2o;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -56,102 +59,103 @@ public class CalIDFMR {
 		 */
 
 		@Override
-		protected void setup(Mapper<Object, Text, Text, Text>.Context context)
-				throws IOException, InterruptedException {
+		protected void setup(Context context) throws IOException, InterruptedException {
 			// TODO Auto-generated method stub
 			bigram = new Bigram(2);
+			Configuration conf = new Configuration();
+			FileSystem hdfs = FileSystem.get(conf);
 			BufferedReader in = null;
 			String line = null;
 			Path[] paths = context.getLocalCacheFiles();
 			try {
 				if (null != paths) {
 					for (Path path : paths) {
-						in = new BufferedReader(new FileReader(path.toString()));
-						while (null != (line = in.readLine())) {
-							set.add(line.split(",")[2]);
+							in = new BufferedReader(new FileReader(path.toString()));
+							while (null != (line = in.readLine())) {
+								set.add(line.split("\t")[2]);
+							}
 						}
 					}
-				}
-			} finally {
-				// TODO: handle finally clause
-				if (null != in) {
-					in.close();
-				}
+			}finally
+
+		{
+			// TODO: handle finally clause
+			if (null != in) {
+				in.close();
 			}
-			System.out.println("set 大小=="+ set.size());
+		} 
+	}
+
+	/*
+	 * (非 Javadoc)  <p>Title: map</p>  <p>Description: </p> 
+	 * 
+	 * @param key
+	 * 
+	 * @param value
+	 * 
+	 * @param context
+	 * 
+	 * @throws IOException
+	 * 
+	 * @throws InterruptedException 
+	 * 
+	 * @see org.apache.hadoop.mapreduce.Mapper#map(java.lang.Object,
+	 * java.lang.Object, org.apache.hadoop.mapreduce.Mapper.Context) 
+	 */
+
+	@Override
+	protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+		// TODO Auto-generated method stub
+		String[] columns = value.toString().split("\t");
+		String skuName = columns[1].replace("\t", " ");
+		;
+		String classId = columns[2];
+		List<String> ram = bigram.splits(skuName);
+		for (int i = 0; i < ram.size(); i++) {
+			context.write(new Text(ram.get(i)), new Text(classId));
+			context.write(new Text(ram.get(i)), new Text("allClass," + set.size()));
+		}
+	}
+
+};
+
+private static class CalIDFReducer extends Reducer<Text, Text, Text, Text> {
+
+	/*
+	 * (非 Javadoc)  <p>Title: reduce</p>  <p>Description: </p> 
+	 * 
+	 * @param arg0
+	 * 
+	 * @param arg1
+	 * 
+	 * @param arg2
+	 * 
+	 * @throws IOException
+	 * 
+	 * @throws InterruptedException 
+	 * 
+	 * @see org.apache.hadoop.mapreduce.Reducer#reduce(java.lang.Object,
+	 * java.lang.Iterable, org.apache.hadoop.mapreduce.Reducer.Context) 
+	 */
+
+	@Override
+	protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+		// TODO Auto-generated method stub
+		// 总文档数
+		int allClass = 0;
+		int ramCount = 0;
+		for (Text val : values) {
+			if (val.toString().startsWith("allClass")) {
+				allClass = Integer.valueOf(val.toString().split(",")[1]);
+			} else {
+				ramCount += 1;
+			}
 		}
 
-		/*
-		 * (非 Javadoc)  <p>Title: map</p>  <p>Description: </p> 
-		 * 
-		 * @param key
-		 * 
-		 * @param value
-		 * 
-		 * @param context
-		 * 
-		 * @throws IOException
-		 * 
-		 * @throws InterruptedException 
-		 * 
-		 * @see org.apache.hadoop.mapreduce.Mapper#map(java.lang.Object,
-		 * java.lang.Object, org.apache.hadoop.mapreduce.Mapper.Context) 
-		 */
-
-		@Override
-		protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-			// TODO Auto-generated method stub
-			String[] columns = value.toString().split(",");
-			String skuName = columns[1].replace("\t", " ");
-			;
-			String classId = columns[2];
-			List<String> ram = bigram.splits(skuName);
-			for (int i = 0; i < ram.size(); i++) {
-				context.write(new Text(ram.get(i)), new Text(classId));
-				context.write(new Text(ram.get(i)), new Text("allClass," + set.size()));
-			}
-		}
-
-	};
-
-	private static class CalIDFReducer extends Reducer<Text, Text, Text, Text> {
-
-		/*
-		 * (非 Javadoc)  <p>Title: reduce</p>  <p>Description: </p> 
-		 * 
-		 * @param arg0
-		 * 
-		 * @param arg1
-		 * 
-		 * @param arg2
-		 * 
-		 * @throws IOException
-		 * 
-		 * @throws InterruptedException 
-		 * 
-		 * @see org.apache.hadoop.mapreduce.Reducer#reduce(java.lang.Object,
-		 * java.lang.Iterable, org.apache.hadoop.mapreduce.Reducer.Context) 
-		 */
-
-		@Override
-		protected void reduce(Text key, Iterable<Text> values, Context context)
-				throws IOException, InterruptedException {
-			// TODO Auto-generated method stub
-			// 总文档数
-			int allClass = 0;
-			int ramCount = 0;
-			for (Text val : values) {
-				if (val.toString().startsWith("allClass")) {
-					allClass = Integer.valueOf(val.toString().split(",")[1]);
-				} else {
-					ramCount += 1;
-				}
-			}
-			System.out.println("总class数=="+allClass);
-			//System.out.println(key.toString()+"出现的在类目下=="+ramCount);
-			double idf = Math.log10(allClass * 1.0 / (1+ramCount * 1.0));
-			context.write(key, new Text(""+idf));
-		}
+		// System.out.println(key.toString()+"出现的在类目下=="+ramCount);
+		double idf = Math.log10(allClass * 1.0 / (1 + ramCount * 1.0));
+		context.write(key, new Text("" + idf));
+	}
 
 	};
 
@@ -169,9 +173,15 @@ public class CalIDFMR {
 		job.setOutputValueClass(Text.class);
 
 		// TODO: specify input and output DIRECTORIES (not files)
-		Path in = new Path("hdfs://master.hadoop:9000/skuin");
-		Path out = new Path("hdfs://master.hadoop:9000/IDFout");
-		job.addCacheFile(new Path("/skuin/20795.txt").toUri());
+		Path in = new Path("/user/mart_o2o/tmp.db/skuInfo");
+		Path out = new Path("/user/mart_o2o/tmp.db/IDFout");
+		job.addCacheFile(new Path("/user/mart_o2o/tmp.db/skuInfo/part-r-00000").toUri());
+
+		FileSystem fileSystem = FileSystem.get(conf);
+		if (fileSystem.exists(out)) {
+			fileSystem.delete(out, true);
+		}
+
 		FileInputFormat.setInputPaths(job, in);
 		FileOutputFormat.setOutputPath(job, out);
 

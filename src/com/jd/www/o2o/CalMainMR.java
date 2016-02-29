@@ -11,6 +11,7 @@ package com.jd.www.o2o;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -66,8 +68,8 @@ public class CalMainMR {
 			// String[] columns = value.toString().split("\t");
 			FileSplit fileSplit = (FileSplit) context.getInputSplit();
 			String path = fileSplit.getPath().getParent().toString();
-			if (path.endsWith("skuin")) {
-				String[] columns = value.toString().split(",");
+			if (path.endsWith("skuInfo")) {
+				String[] columns = value.toString().split("\t");
 				String skuId = columns[0];
 				String skuName = columns[1];
 				String classId = columns[2];
@@ -117,37 +119,23 @@ public class CalMainMR {
 					map.put(val.toString().split("\t")[1], val.toString().split("\t")[2]);
 				}
 			}
-			double tfidfSum = 0d;
-			Set<String> set = null;
-			Iterator<String> it = null;
-			set = map.keySet();
-			it = set.iterator();
-			System.out.println("set size=="+set.size());
-			System.out.println("it hasNex==" + it.hasNext());
+			
+//			Set<String> set = null;
+//			Iterator<String> it = null;
+//			set = map.keySet();
+//			it = set.iterator();
 			
 			for (int i = 0; i < list.size(); i++) {
+				double tfidfSum = 0d;
 				String line = list.get(i);
 				List<String> rams = bigram.splits(line.split("\t")[1]);
 				for (int j = 0; j < rams.size(); j++) {
 					String ram = rams.get(j);
-					// System.out.println("ram=="+ram);
-					// System.out.println("tfidf=="+ map.get("ml"));
-					 String tfidf = map.get(ram)==null ? "0" : map.get(ram);
+					 String tfidf = (map.get(ram)==null ? "0" : map.get(ram));
 					 double d = Double.parseDouble(tfidf);
 					 tfidfSum += d;
-					// System.out.println("d=="+d);
-					// System.out.println("tfidf=="+tfidfSum);
-
-//					while (it.hasNext()) {
-//						System.out.println("ram==" + ram);
-//						System.out.println("it.next==" + it.next());
-//						if (it.next().equals(ram)) {
-//							System.out.println("****************" + it.next());
-//							tfidfSum += Double.parseDouble(map.get(it.next()));
-//						}
-//					}
 				}
-				context.write(new Text(), new Text(line + "\t" + tfidfSum));
+				context.write(new Text(new Date().toLocaleString().substring(0, 9)), new Text(line + "\t" + tfidfSum));
 			}
 		}
 	}
@@ -165,9 +153,14 @@ public class CalMainMR {
 		job.setOutputValueClass(Text.class);
 
 		// TODO: specify input and output DIRECTORIES (not files)
-		FileInputFormat.setInputPaths(job, new Path("hdfs://master.hadoop:9000/skuin"));
-		FileInputFormat.addInputPath(job, new Path("hdfs://master.hadoop:9000/TFIDFout"));
-		FileOutputFormat.setOutputPath(job, new Path("hdfs://master.hadoop:9000/skuout"));
+		Path out =  new Path("/user/mart_o2o/tmp.db/skuout");
+		FileSystem fileSystem = FileSystem.get(conf);
+		if (fileSystem.exists(out)) {
+			fileSystem.delete(out, true);
+		}
+		FileInputFormat.setInputPaths(job, new Path("/user/mart_o2o/tmp.db/skuInfo"));
+		FileInputFormat.addInputPath(job, new Path("/user/mart_o2o/tmp.db/TFIDFout"));
+		FileOutputFormat.setOutputPath(job, out);
 
 		if (!job.waitForCompletion(true))
 			return;
