@@ -39,7 +39,7 @@ import com.jd.www.o2o.util.Bigram;
  */
 
 public class CalTFMR {
-	private static class CalTFMapper extends Mapper<Object, Text, Text, Text> {
+	public static class CalTFMapper extends Mapper<Object, Text, Text, Text> {
 		Bigram br = null;
 		/*
 		 * (非 Javadoc)  <p>Title: setup</p>  <p>Description: </p> 
@@ -58,10 +58,8 @@ public class CalTFMR {
 		@Override
 		protected void setup(Context context) throws IOException, InterruptedException {
 			// TODO Auto-generated method stub
-
 			br = new Bigram(2);
 		}
-
 		/*
 		 * (非 Javadoc)  <p>Title: map</p>  <p>Description: </p> 
 		 * 
@@ -94,7 +92,7 @@ public class CalTFMR {
 
 	}
 
-	private static class CalTFReducer extends Reducer<Text, Text, Text, Text> {
+	public static class CalTFReducer extends Reducer<Text, Text, Text, Text> {
 
 		/*
 		 * (非 Javadoc)  <p>Title: reduce</p>  <p>Description: </p> 
@@ -149,7 +147,7 @@ public class CalTFMR {
 
 	}
 
-	public void run(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
+/*	public void run(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
 		Configuration conf = new Configuration();
 		Job job = Job.getInstance(conf, "CalTFMR");
 		job.setJarByClass(com.jd.www.o2o.CalTFMR.class);
@@ -180,6 +178,6 @@ public class CalTFMR {
 	public static void main(String[] args) throws Exception {
 		CalTFMR caltf = new CalTFMR();
 		caltf.run(args);
-	}
+	}*/
 
 }

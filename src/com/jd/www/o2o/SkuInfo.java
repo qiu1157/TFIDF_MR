@@ -21,7 +21,7 @@ import com.hadoop.mapreduce.LzoTextInputFormat;
 
 public class SkuInfo {
 	String dealDateStr;
-	public void run(String[] args) throws ClassNotFoundException, IOException, InterruptedException {
+/*	public void run(String[] args) throws ClassNotFoundException, IOException, InterruptedException {
 		Configuration conf = new Configuration();
 		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 		
@@ -55,7 +55,7 @@ public class SkuInfo {
 	}
 	public static void main(String[] args) throws Exception {
 		new SkuInfo().run(args);
-	}
+	}*/
 	
 	public static class Skuo2oMapper extends Mapper<Object, Text, Text, Text> {
 		@Override

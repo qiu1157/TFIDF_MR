@@ -32,7 +32,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class CalTFIDFMR {
 	
-	private static class CalTFIDFMapper extends Mapper<Object, Text, Text, Text> {
+	public static class CalTFIDFMapper extends Mapper<Object, Text, Text, Text> {
 
 		/* (非 Javadoc)  
 		* <p>Title: map</p>  
@@ -66,7 +66,7 @@ public class CalTFIDFMR {
 		
 	}
 	
-	private static class CalTFIDFReducer extends Reducer<Text, Text, Text, Text> {
+	public static class CalTFIDFReducer extends Reducer<Text, Text, Text, Text> {
 
 		/* (非 Javadoc)  
 		* <p>Title: reduce</p>  
@@ -101,7 +101,7 @@ public class CalTFIDFMR {
 		
 	}
 	
-	public void run(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
+/*	public void run(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
 		Configuration conf = new Configuration();
 		Job job = Job.getInstance(conf, "CalTFIDFMR");
 		job.setJarByClass(com.jd.www.o2o.CalTFIDFMR.class);
@@ -130,5 +130,5 @@ public class CalTFIDFMR {
 		CalTFIDFMR calTFIDF = new CalTFIDFMR();
 		calTFIDF.run(args);
 	}
-
+*/
 }

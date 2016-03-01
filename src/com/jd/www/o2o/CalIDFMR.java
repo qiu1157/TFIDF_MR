@@ -41,7 +41,7 @@ import com.jd.www.o2o.util.Bigram;
 
 public class CalIDFMR {
 
-	private static class CalIDFMapper extends Mapper<Object, Text, Text, Text> {
+	public static class CalIDFMapper extends Mapper<Object, Text, Text, Text> {
 		private Bigram bigram;
 		Set<String> set = new HashSet<String>();
 		/*
@@ -70,128 +70,124 @@ public class CalIDFMR {
 			try {
 				if (null != paths) {
 					for (Path path : paths) {
-							in = new BufferedReader(new FileReader(path.toString()));
-							while (null != (line = in.readLine())) {
-								set.add(line.split("\t")[2]);
-							}
+						in = new BufferedReader(new FileReader(path.toString()));
+						while (null != (line = in.readLine())) {
+							set.add(line.split("\t")[2]);
 						}
 					}
-			}finally
+				}
+			} finally
 
-		{
-			// TODO: handle finally clause
-			if (null != in) {
-				in.close();
-			}
-		} 
-	}
-
-	/*
-	 * (非 Javadoc)  <p>Title: map</p>  <p>Description: </p> 
-	 * 
-	 * @param key
-	 * 
-	 * @param value
-	 * 
-	 * @param context
-	 * 
-	 * @throws IOException
-	 * 
-	 * @throws InterruptedException 
-	 * 
-	 * @see org.apache.hadoop.mapreduce.Mapper#map(java.lang.Object,
-	 * java.lang.Object, org.apache.hadoop.mapreduce.Mapper.Context) 
-	 */
-
-	@Override
-	protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-		// TODO Auto-generated method stub
-		String[] columns = value.toString().split("\t");
-		String skuName = columns[1].replace("\t", " ");
-		;
-		String classId = columns[2];
-		List<String> ram = bigram.splits(skuName);
-		for (int i = 0; i < ram.size(); i++) {
-			context.write(new Text(ram.get(i)), new Text(classId));
-			context.write(new Text(ram.get(i)), new Text("allClass," + set.size()));
-		}
-	}
-
-};
-
-private static class CalIDFReducer extends Reducer<Text, Text, Text, Text> {
-
-	/*
-	 * (非 Javadoc)  <p>Title: reduce</p>  <p>Description: </p> 
-	 * 
-	 * @param arg0
-	 * 
-	 * @param arg1
-	 * 
-	 * @param arg2
-	 * 
-	 * @throws IOException
-	 * 
-	 * @throws InterruptedException 
-	 * 
-	 * @see org.apache.hadoop.mapreduce.Reducer#reduce(java.lang.Object,
-	 * java.lang.Iterable, org.apache.hadoop.mapreduce.Reducer.Context) 
-	 */
-
-	@Override
-	protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-		// TODO Auto-generated method stub
-		// 总文档数
-		int allClass = 0;
-		int ramCount = 0;
-		for (Text val : values) {
-			if (val.toString().startsWith("allClass")) {
-				allClass = Integer.valueOf(val.toString().split(",")[1]);
-			} else {
-				ramCount += 1;
+			{
+				// TODO: handle finally clause
+				if (null != in) {
+					in.close();
+				}
 			}
 		}
 
-		// System.out.println(key.toString()+"出现的在类目下=="+ramCount);
-		double idf = Math.log10(allClass * 1.0 / (1 + ramCount * 1.0));
-		context.write(key, new Text("" + idf));
-	}
+		/*
+		 * (非 Javadoc)  <p>Title: map</p>  <p>Description: </p> 
+		 * 
+		 * @param key
+		 * 
+		 * @param value
+		 * 
+		 * @param context
+		 * 
+		 * @throws IOException
+		 * 
+		 * @throws InterruptedException 
+		 * 
+		 * @see org.apache.hadoop.mapreduce.Mapper#map(java.lang.Object,
+		 * java.lang.Object, org.apache.hadoop.mapreduce.Mapper.Context) 
+		 */
+
+		@Override
+		protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+			// TODO Auto-generated method stub
+			String[] columns = value.toString().split("\t");
+			String skuName = columns[1].replace("\t", " ");
+			;
+			String classId = columns[2];
+			List<String> ram = bigram.splits(skuName);
+			for (int i = 0; i < ram.size(); i++) {
+				context.write(new Text(ram.get(i)), new Text(classId));
+				context.write(new Text(ram.get(i)), new Text("allClass," + set.size()));
+			}
+		}
 
 	};
 
-	public void run(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
-		Configuration conf = new Configuration();
-		Job job = Job.getInstance(conf, "CalIDFMR");
-		job.setJarByClass(com.jd.www.o2o.CalIDFMR.class);
+	public static class CalIDFReducer extends Reducer<Text, Text, Text, Text> {
 
-		job.setMapperClass(CalIDFMapper.class);
+		/*
+		 * (非 Javadoc)  <p>Title: reduce</p>  <p>Description: </p> 
+		 * 
+		 * @param arg0
+		 * 
+		 * @param arg1
+		 * 
+		 * @param arg2
+		 * 
+		 * @throws IOException
+		 * 
+		 * @throws InterruptedException 
+		 * 
+		 * @see org.apache.hadoop.mapreduce.Reducer#reduce(java.lang.Object,
+		 * java.lang.Iterable, org.apache.hadoop.mapreduce.Reducer.Context) 
+		 */
 
-		job.setReducerClass(CalIDFReducer.class);
+		@Override
+		protected void reduce(Text key, Iterable<Text> values, Context context)
+				throws IOException, InterruptedException {
+			// TODO Auto-generated method stub
+			// 总文档数
+			int allClass = 0;
+			int ramCount = 0;
+			for (Text val : values) {
+				if (val.toString().startsWith("allClass")) {
+					allClass = Integer.valueOf(val.toString().split(",")[1]);
+				} else {
+					ramCount += 1;
+				}
+			}
 
-		// TODO: specify output types
-		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(Text.class);
-
-		// TODO: specify input and output DIRECTORIES (not files)
-		Path in = new Path("/user/mart_o2o/tmp.db/skuInfo");
-		Path out = new Path("/user/mart_o2o/tmp.db/IDFout");
-		job.addCacheFile(new Path("/user/mart_o2o/tmp.db/skuInfo/part-r-00000").toUri());
-
-		FileSystem fileSystem = FileSystem.get(conf);
-		if (fileSystem.exists(out)) {
-			fileSystem.delete(out, true);
+			// System.out.println(key.toString()+"出现的在类目下=="+ramCount);
+			double idf = Math.log10(allClass * 1.0 / (1 + ramCount * 1.0));
+			context.write(key, new Text("" + idf));
 		}
 
-		FileInputFormat.setInputPaths(job, in);
-		FileOutputFormat.setOutputPath(job, out);
+	};
 
-		if (!job.waitForCompletion(true))
-			return;
-	}
-
-	public static void main(String[] args) throws Exception {
-		CalIDFMR calIDF = new CalIDFMR();
-		calIDF.run(args);
-	}
+	/*
+	 * public void run(String[] args) throws IOException, InterruptedException,
+	 * ClassNotFoundException { Configuration conf = new Configuration(); Job
+	 * job = Job.getInstance(conf, "CalIDFMR");
+	 * job.setJarByClass(com.jd.www.o2o.CalIDFMR.class);
+	 * 
+	 * job.setMapperClass(CalIDFMapper.class);
+	 * 
+	 * job.setReducerClass(CalIDFReducer.class);
+	 * 
+	 * // TODO: specify output types job.setOutputKeyClass(Text.class);
+	 * job.setOutputValueClass(Text.class);
+	 * 
+	 * // TODO: specify input and output DIRECTORIES (not files) Path in = new
+	 * Path("/user/mart_o2o/tmp.db/skuInfo"); Path out = new
+	 * Path("/user/mart_o2o/tmp.db/IDFout"); job.addCacheFile(new
+	 * Path("/user/mart_o2o/tmp.db/skuInfo/part-r-00000").toUri());
+	 * 
+	 * FileSystem fileSystem = FileSystem.get(conf); if (fileSystem.exists(out))
+	 * { fileSystem.delete(out, true); }
+	 * 
+	 * FileInputFormat.setInputPaths(job, in);
+	 * FileOutputFormat.setOutputPath(job, out);
+	 * 
+	 * if (!job.waitForCompletion(true)) return; }
+	 * 
+	 * public static void main(String[] args) throws Exception { CalIDFMR calIDF
+	 * = new CalIDFMR(); calIDF.run(args); }
+	 */
 
 }

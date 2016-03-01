@@ -28,9 +28,24 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.jobcontrol.ControlledJob;
+import org.apache.hadoop.mapreduce.lib.jobcontrol.JobControl;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
 
+import com.hadoop.mapreduce.LzoTextInputFormat;
+import com.jd.www.o2o.SkuInfo.Skuo2oMapper;
+import com.jd.www.o2o.SkuInfo.StockMapper;
+import com.jd.www.o2o.SkuInfo.skuInfoReducer;
 import com.jd.www.o2o.util.Bigram;
+import com.jd.www.o2o.CalIDFMR.CalIDFMapper;
+import com.jd.www.o2o.CalIDFMR.CalIDFReducer;
+import com.jd.www.o2o.CalTFIDFMR.CalTFIDFMapper;
+import com.jd.www.o2o.CalTFIDFMR.CalTFIDFReducer;
+import com.jd.www.o2o.CalTFMR.CalTFMapper;
+import com.jd.www.o2o.CalTFMR.CalTFReducer;
 
 /**
  *  
@@ -141,17 +156,14 @@ public class CalMainMR {
 	}
 
 	public void run(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
-		Configuration conf = new Configuration();
+/*		Configuration conf = new Configuration();
 		Job job = Job.getInstance(conf, "CalMainMR");
 		job.setJarByClass(com.jd.www.o2o.CalMainMR.class);
 		job.setMapperClass(CalMainMapper.class);
-
 		job.setReducerClass(CalMainReducer.class);
-
 		// TODO: specify output types
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
-
 		// TODO: specify input and output DIRECTORIES (not files)
 		Path out =  new Path("/user/mart_o2o/tmp.db/skuout");
 		FileSystem fileSystem = FileSystem.get(conf);
@@ -164,8 +176,158 @@ public class CalMainMR {
 
 		if (!job.waitForCompletion(true))
 			return;
+	}*/
+	
+	//-------------------CalTF的MapReduce作业设置-----------------------------------------
+	Configuration calTFConf = new Configuration();
+	Job calTFjob = Job.getInstance(calTFConf, "CalTFMR");
+	calTFjob.setJarByClass(com.jd.www.o2o.CalTFMR.class);
+	calTFjob.setMapperClass(CalTFMapper.class);
+	calTFjob.setReducerClass(CalTFReducer.class);
+
+	// TODO: specify output types
+	calTFjob.setMapOutputKeyClass(Text.class);
+	calTFjob.setMapOutputValueClass(Text.class);
+	calTFjob.setOutputKeyClass(Text.class);
+	calTFjob.setOutputValueClass(Text.class);
+
+	// TODO: specify input and output DIRECTORIES (not files)
+	Path calTFout = new Path("/user/mart_o2o/tmp.db/TFout");
+	FileSystem fileSystem = FileSystem.get(calTFConf);
+	if (fileSystem.exists(calTFout)) {
+		fileSystem.delete(calTFout, true);
 	}
 
+	FileInputFormat.setInputPaths(calTFjob, new Path("/user/mart_o2o/tmp.db/skuInfo"));
+	FileOutputFormat.setOutputPath(calTFjob, calTFout);
+	
+	//-------------------CalIDF的MapReduce作业设置-----------------------------------------
+	Configuration calIDFConf = new Configuration();
+	Job calIDFjob = Job.getInstance(calIDFConf, "CalIDFMR");
+	calIDFjob.setJarByClass(com.jd.www.o2o.CalIDFMR.class);
+
+	calIDFjob.setMapperClass(CalIDFMapper.class);
+
+	calIDFjob.setReducerClass(CalIDFReducer.class);
+
+	// TODO: specify output types
+	calIDFjob.setOutputKeyClass(Text.class);
+	calIDFjob.setOutputValueClass(Text.class);
+
+	// TODO: specify input and output DIRECTORIES (not files)
+	Path in = new Path("/user/mart_o2o/tmp.db/skuInfo");
+	Path calIDFout = new Path("/user/mart_o2o/tmp.db/IDFout");
+	calIDFjob.addCacheFile(new Path("/user/mart_o2o/tmp.db/skuInfo/part-r-00000").toUri());
+
+	fileSystem = FileSystem.get(calIDFConf);
+	if (fileSystem.exists(calIDFout)) {
+		fileSystem.delete(calIDFout, true);
+	}
+
+	FileInputFormat.setInputPaths(calIDFjob, in);
+	FileOutputFormat.setOutputPath(calIDFjob, calIDFout);
+	
+	//-------------------CalTFIDF的MapReduce作业设置-----------------------------------------
+	Configuration calTFIDFConf = new Configuration();
+	Job calTFIDFjob = Job.getInstance(calTFIDFConf, "CalTFIDFMR");
+	calTFIDFjob.setJarByClass(com.jd.www.o2o.CalTFIDFMR.class);
+	calTFIDFjob.setMapperClass(CalTFIDFMapper.class);
+
+	calTFIDFjob.setReducerClass(CalTFIDFReducer.class);
+
+	// TODO: specify output types
+	calTFIDFjob.setOutputKeyClass(Text.class);
+	calTFIDFjob.setOutputValueClass(Text.class);
+
+	// TODO: specify input and output DIRECTORIES (not files)
+	Path calTFIDFout = new Path("/user/mart_o2o/tmp.db/TFIDFout");
+	fileSystem = FileSystem.get(calTFIDFConf);
+	if (fileSystem.exists(calTFIDFout)) {
+		fileSystem.delete(calTFIDFout, true);
+	}
+	FileInputFormat.setInputPaths(calTFIDFjob, new Path("/user/mart_o2o/tmp.db/TFout"));
+	FileInputFormat.addInputPath(calTFIDFjob, new Path("/user/mart_o2o/tmp.db/IDFout"));
+	FileOutputFormat.setOutputPath(calTFIDFjob, calTFIDFout);	
+	
+	//-------------------CalMain的MapReduce作业设置-----------------------------------------
+	Configuration calMainConf = new Configuration();
+	String[] otherArgs = new GenericOptionsParser(calMainConf, args).getRemainingArgs();
+	String dealDateStr = calMainConf.get("dealDate");
+	Job calMainjob = Job.getInstance(calMainConf, "CalMainMR");
+	calMainjob.setJarByClass(com.jd.www.o2o.CalMainMR.class);
+	calMainjob.setMapperClass(CalMainMapper.class);
+	calMainjob.setReducerClass(CalMainReducer.class);
+	// TODO: specify output types
+	calMainjob.setOutputKeyClass(Text.class);
+	calMainjob.setOutputValueClass(Text.class);
+	// TODO: specify input and output DIRECTORIES (not files)
+	Path out =  new Path("/user/mart_o2o/tmp.db/skuout");
+	fileSystem = FileSystem.get(calMainConf);
+	if (fileSystem.exists(out)) {
+		fileSystem.delete(out, true);
+	}
+	FileInputFormat.setInputPaths(calMainjob, new Path("/user/mart_o2o/tmp.db/skuInfo"));
+	FileInputFormat.addInputPath(calMainjob, new Path("/user/mart_o2o/tmp.db/TFIDFout"));
+	FileOutputFormat.setOutputPath(calMainjob, out);	
+
+	//-------------------skuInfo的MapReduce作业设置-----------------------------------------
+	Configuration skuInfoConf = new Configuration();
+	Job skuInfoJob = Job.getInstance(skuInfoConf, "skuInfo");
+	skuInfoJob.setJarByClass(com.jd.www.o2o.SkuInfo.class);
+	skuInfoJob.setMapperClass(Skuo2oMapper.class);
+	skuInfoJob.setMapperClass(StockMapper.class);
+	// TODO: specify a reducer
+	skuInfoJob.setReducerClass(skuInfoReducer.class);
+	// TODO: specify output types
+	skuInfoJob.setInputFormatClass(LzoTextInputFormat.class);
+	skuInfoJob.setOutputKeyClass(Text.class);
+	skuInfoJob.setOutputValueClass(Text.class);
+	skuInfoJob.setOutputFormatClass(TextOutputFormat.class);
+	
+	// TODO: specify input and output DIRECTORIES (not files)
+	MultipleInputs.addInputPath(skuInfoJob, new Path("/user/dd_edw/gdm.db/gdm_m03_item_sku_o2o_da/dt="+dealDateStr), LzoTextInputFormat.class, Skuo2oMapper.class);
+	MultipleInputs.addInputPath(skuInfoJob, new Path("/user/dd_edw/fdm.db/fdm_stock_center_stock_center_chain/dp=ACTIVE/dt=4712-12-31/end_date=4712-12-31/"), LzoTextInputFormat.class, StockMapper.class);
+	Path skuInfoout = new Path("/user/mart_o2o/tmp.db/skuInfo");
+	fileSystem = FileSystem.get(skuInfoConf); 
+	if (fileSystem.exists(skuInfoout)) {
+		fileSystem.delete(skuInfoout, true);
+	}
+	FileOutputFormat.setOutputPath(skuInfoJob, skuInfoout);
+	
+	
+	ControlledJob skuinfoJobCtr = new ControlledJob(skuInfoConf);
+	ControlledJob calTFJobCtr = new ControlledJob(calTFConf);
+	ControlledJob calIDFJobCtr = new ControlledJob(calIDFConf);
+	ControlledJob calTFIDFJobCtr = new ControlledJob(calTFIDFConf);
+	ControlledJob calMainJobCtr = new ControlledJob(calMainConf);
+	
+	calTFJobCtr.addDependingJob(skuinfoJobCtr);
+	calIDFJobCtr.addDependingJob(skuinfoJobCtr);
+	calTFIDFJobCtr.addDependingJob(calTFJobCtr);
+	calTFIDFJobCtr.addDependingJob(calIDFJobCtr);
+	calMainJobCtr.addDependingJob(calTFIDFJobCtr);
+	
+	JobControl jobControl = new JobControl("sku_class");
+	jobControl.addJob(skuinfoJobCtr);
+	jobControl.addJob(calTFJobCtr);
+	jobControl.addJob(calIDFJobCtr);
+	jobControl.addJob(calTFIDFJobCtr);
+	jobControl.addJob(calMainJobCtr);
+	
+	skuinfoJobCtr.setJob(skuInfoJob);
+	calTFJobCtr.setJob(calTFjob);
+	calIDFJobCtr.setJob(calIDFjob);
+	calTFIDFJobCtr.setJob(calTFIDFjob);
+	calMainJobCtr.setJob(calMainjob);
+	
+	Thread jobControlThread =new Thread(jobControl);
+	jobControlThread.start();
+	while(!jobControl.allFinished()) {
+	Thread.sleep(500);
+	}
+	jobControl.stop();
+	return;
+	}
 	public static void main(String[] args) throws Exception {
 		CalMainMR calMain = new CalMainMR();
 		calMain.run(args);
